@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>zimi Model editor</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body { margin: 0; display: flex; font-family: 'Segoe UI', Tahoma, sans-serif; background: #111; color: #eee; height: 100vh; overflow: hidden; }
+        #gui { width: 320px; padding: 15px; background: #1a1a1a; border-right: 1px solid #333; overflow-y: auto; }
+        #object-list { width: 380px; padding: 15px; background: #1a1a1a; border-left: 1px solid #333; overflow-y: auto; }
+        canvas { flex-grow: 1; }
+        .section { background: #252525; padding: 10px; border-radius: 5px; margin-bottom: 10px; border: 1px solid #333; }
+        h4 { margin: 0 0 10px 0; color: #007bff; font-size: 14px; text-transform: uppercase; }
+        label { display: block; font-size: 10px; color: #888; margin-top: 5px; }
+        .input-row { display: flex; gap: 5px; margin-bottom: 5px; }
+        input, select { background: #333; border: 1px solid #444; color: white; padding: 6px; border-radius: 3px; width: 100%; font-size: 12px; }
+        input[type="color"] { height: 30px; padding: 0; border: none; cursor: pointer; }
+        button { width: 100%; padding: 10px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; margin-bottom: 8px; transition: 0.2s; }
+        .btn-add { background: #28a745; color: white; }
+        .btn-group { background: #6f42c1; color: white; }
+        .btn-clone { background: #ffc107; color: #212529; }
+        .btn-export { background: #007bff; color: white; margin-top: 5px; }
+        .btn-del { background: #c82333; color: white; margin-top: 10px; font-size: 11px; }
+        table { width: 100%; font-size: 11px; border-collapse: collapse; }
+        th { text-align: left; color: #555; border-bottom: 1px solid #333; padding: 5px; }
+        td { padding: 8px 5px; border-bottom: 1px solid #222; }
+        .row-selected { background: #007bff33 !important; }
+        .item-row { cursor: pointer; }
+        .group-header { background: #222; color: #007bff; font-weight: bold; font-size: 10px; }
+    </style>
+</head>
+<body>
+
+    <div id="gui">
+        <h3>zModel Lite</h3>
+        <button class="btn-add" onclick="addBox()">+ NEW BLOCK</button>
+        <button class="btn-group" onclick="createGroup()">+ NEW GROUP</button>
+        
+        <div id="inspector" style="display:none">
+            <div class="section">
+                <h4>Identity</h4>
+                <label>Block Name</label>
+                <input type="text" id="n_name" oninput="updateFromGui()">
+                <label>Assign to Group</label>
+                <select id="n_group" onchange="updateFromGui()"></select>
+                <button class="btn-clone" onclick="cloneBox()" style="margin-top:10px">❐ CLONE SELECTED</button>
+            </div>
+
+            <div class="section">
+                <h4>Transformation</h4>
+                <label>Position (X, Y, Z)</label>
+                <div class="input-row">
+                    <input type="number" id="n_px" step="0.05" oninput="updateFromGui()">
+                    <input type="number" id="n_py" step="0.05" oninput="updateFromGui()">
+                    <input type="number" id="n_pz" step="0.05" oninput="updateFromGui()">
+                </div>
+                <label>Rotation (Deg X, Y, Z)</label>
+                <div class="input-row">
+                    <input type="number" id="n_rx" oninput="updateFromGui()">
+                    <input type="number" id="n_ry" oninput="updateFromGui()">
+                    <input type="number" id="n_rz" oninput="updateFromGui()">
+                </div>
+                <label>Size (W, H, D)</label>
+                <div class="input-row">
+                    <input type="number" id="n_sw" min="0.01" step="0.1" oninput="updateFromGui()">
+                    <input type="number" id="n_sh" min="0.01" step="0.1" oninput="updateFromGui()">
+                    <input type="number" id="n_sd" min="0.01" step="0.1" oninput="updateFromGui()">
+                </div>
+            </div>
+
+            <div class="section">
+                <h4>Appearance</h4>
+                <input type="color" id="i_col" oninput="updateFromGui('picker')">
+                <label>HEX Code</label>
+                <input type="text" id="t_col" oninput="updateFromGui('text')">
+            </div>
+            
+            <button class="btn-del" onclick="deleteBox()">DELETE</button>
+        </div>
+        
+        <div class="section" style="margin-top:20px">
+            <h4>Export Settings</h4>
+            <label>Filename</label>
+            <input type="text" id="export_name" value="my_model">
+            <button class="btn-export" onclick="exportFile()">EXPORT .zmod</button>
+        </div>
+    </div>
+
+    <div style="flex-grow:1; position:relative;" id="canvas-container"></div>
+
+    <div id="object-list">
+        <h4>Hierarchy</h4>
+        <table>
+            <thead>
+                <tr><th>Name</th><th>Group</th><th>Color</th></tr>
+            </thead>
+            <tbody id="list-body"></tbody>
+        </table>
+    </div>
+
+    <script>
+        let scene = new THREE.Scene();
+        let camera = new THREE.PerspectiveCamera(75, (window.innerWidth-700)/window.innerHeight, 0.1, 1000);
+        let renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth-700, window.innerHeight);
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+        scene.add(new THREE.GridHelper(10, 20, 0x444, 0x222));
+        camera.position.set(5, 5, 5); camera.lookAt(0,0,0);
+
+        let boxes = [], groups = ["None"], selected = null, counter = 0;
+
+        function createGroup() {
+            let gName = prompt("Enter Group Name:");
+            if(gName && !groups.includes(gName)) {
+                groups.push(gName);
+                updateGroupDropdown();
+            }
+        }
+
+        function updateGroupDropdown() {
+            let sel = document.getElementById('n_group');
+            sel.innerHTML = groups.map(g => `<option value="${g}">${g}</option>`).join('');
+        }
+
+        function addBox(data = null) {
+            let mesh = new THREE.Mesh(new THREE.BoxGeometry(1,1,1), new THREE.MeshStandardMaterial({color: 0xffffff}));
+            if(data) {
+                mesh.position.set(data.px, data.py, data.pz);
+                mesh.rotation.set(data.rx, data.ry, data.rz);
+                mesh.scale.set(data.sw, data.sh, data.sd);
+            }
+            scene.add(mesh);
+            let obj = { 
+                id: counter++, 
+                name: data ? data.name : "Block_" + counter,
+                group: data ? data.group : "None",
+                mesh, col: data ? data.col : "#ffffff", 
+                sw: data ? data.sw : 1, sh: data ? data.sh : 1, sd: data ? data.sd : 1 
+            };
+            boxes.push(obj);
+            refreshList();
+            select(obj);
+        }
+
+        function cloneBox() {
+            if(!selected) return;
+            addBox({
+                name: selected.name + "_copy", group: selected.group,
+                px: selected.mesh.position.x + 0.2, py: selected.mesh.position.y, pz: selected.mesh.position.z,
+                rx: selected.mesh.rotation.x, ry: selected.mesh.rotation.y, rz: selected.mesh.rotation.z,
+                sw: selected.sw, sh: selected.sh, sd: selected.sd, col: selected.col
+            });
+        }
+
+        function select(obj) {
+            selected = obj;
+            document.getElementById('inspector').style.display = 'block';
+            document.getElementById('n_name').value = obj.name;
+            document.getElementById('n_group').value = obj.group;
+            document.getElementById('i_col').value = obj.col;
+            document.getElementById('t_col').value = obj.col;
+            document.getElementById('n_px').value = obj.mesh.position.x.toFixed(3);
+            document.getElementById('n_py').value = obj.mesh.position.y.toFixed(3);
+            document.getElementById('n_pz').value = obj.mesh.position.z.toFixed(3);
+            document.getElementById('n_rx').value = Math.round(obj.mesh.rotation.x * 180 / Math.PI);
+            document.getElementById('n_ry').value = Math.round(obj.mesh.rotation.y * 180 / Math.PI);
+            document.getElementById('n_rz').value = Math.round(obj.mesh.rotation.z * 180 / Math.PI);
+            document.getElementById('n_sw').value = obj.sw;
+            document.getElementById('n_sh').value = obj.sh;
+            document.getElementById('n_sd').value = obj.sd;
+            refreshList();
+        }
+
+        function updateFromGui(mode) {
+            if(!selected) return;
+            selected.name = document.getElementById('n_name').value;
+            selected.group = document.getElementById('n_group').value;
+            if(mode === 'text') selected.col = document.getElementById('t_col').value;
+            else selected.col = document.getElementById('i_col').value;
+            document.getElementById('i_col').value = selected.col;
+            document.getElementById('t_col').value = selected.col;
+            
+            selected.mesh.material.color.set(selected.col);
+            selected.mesh.position.set(parseFloat(document.getElementById('n_px').value)||0, parseFloat(document.getElementById('n_py').value)||0, parseFloat(document.getElementById('n_pz').value)||0);
+            selected.mesh.rotation.set((document.getElementById('n_rx').value||0)*Math.PI/180, (document.getElementById('n_ry').value||0)*Math.PI/180, (document.getElementById('n_rz').value||0)*Math.PI/180);
+            selected.sw = parseFloat(document.getElementById('n_sw').value)||0.1;
+            selected.sh = parseFloat(document.getElementById('n_sh').value)||0.1;
+            selected.sd = parseFloat(document.getElementById('n_sd').value)||0.1;
+            selected.mesh.scale.set(selected.sw, selected.sh, selected.sd);
+            refreshList();
+        }
+
+        function refreshList() {
+            let html = "";
+            groups.forEach(g => {
+                let groupItems = boxes.filter(b => b.group === g);
+                if(groupItems.length > 0 || g === "None") {
+                    html += `<tr class="group-header"><td colspan="3">${g}</td></tr>`;
+                    groupItems.forEach(b => {
+                        let selClass = (selected && selected.id === b.id) ? "row-selected" : "";
+                        html += `<tr class="item-row ${selClass}" onclick="selectById(${b.id})">
+                            <td>${b.name}</td><td>${b.group}</td><td style="color:${b.col}">■</td>
+                        </tr>`;
+                    });
+                }
+            });
+            document.getElementById('list-body').innerHTML = html;
+        }
+
+        function selectById(id) { let obj = boxes.find(b => b.id === id); if(obj) select(obj); }
+
+        function deleteBox() {
+            if(!selected) return;
+            scene.remove(selected.mesh);
+            boxes = boxes.filter(b => b.id !== selected.id);
+            selected = null;
+            document.getElementById('inspector').style.display = 'none';
+            refreshList();
+        }
+
+        function exportFile() {
+            let out = "";
+            boxes.forEach(b => {
+                let p = b.mesh.position; let r = b.mesh.rotation;
+                out += `${b.col},${p.x.toFixed(3)},${p.y.toFixed(3)},${p.z.toFixed(3)},${(r.x*180/Math.PI).toFixed(1)},${(r.y*180/Math.PI).toFixed(1)},${(r.z*180/Math.PI).toFixed(1)},${b.sw.toFixed(2)},${b.sh.toFixed(2)},${b.sd.toFixed(2)}\n`;
+            });
+            let filename = document.getElementById('export_name').value || "model";
+            let a = document.createElement('a');
+            a.href = URL.createObjectURL(new Blob([out]));
+            a.download = filename + ".zmod"; a.click();
+        }
+
+        let isMouseDown = false, theta = 45, phi = 60;
+        renderer.domElement.addEventListener('mousedown', () => isMouseDown = true);
+        window.addEventListener('mouseup', () => isMouseDown = false);
+        window.addEventListener('mousemove', (e) => {
+            if(isMouseDown) {
+                theta -= e.movementX * 0.5; phi += e.movementY * 0.5;
+                phi = Math.max(10, Math.min(170, phi));
+                let r = 8;
+                camera.position.set(r * Math.sin(phi * Math.PI/180) * Math.cos(theta * Math.PI/180), r * Math.cos(phi * Math.PI/180), r * Math.sin(phi * Math.PI/180) * Math.sin(theta * Math.PI/180));
+                camera.lookAt(0,0,0);
+            }
+        });
+
+        updateGroupDropdown();
+        function animate() { requestAnimationFrame(animate); renderer.render(scene, camera); }
+        animate();
+    </script>
+</body>
+</html>
