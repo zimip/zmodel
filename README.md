@@ -22,13 +22,8 @@ Building models for the mod shouldn't require complex toolchains or proprietary 
 ---
 
 ## Getting started
-```bash
-git clone https://github.com/zimip/zmodel.git
-cd zmodel
-# follow setup instructions here
-```
 
-Or just open `index.html` directly in your browser if no server is needed.
+Simply open `index.html` directly in your browser *wink*
 
 ---
 
