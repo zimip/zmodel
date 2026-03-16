@@ -23,7 +23,7 @@ Building models for the mod shouldn't require complex toolchains or proprietary 
 
 ## Getting started
 ```bash
-git clone https://github.com/yourname/zmodel.git
+git clone https://github.com/zimip/zmodel.git
 cd zmodel
 # follow setup instructions here
 ```
@@ -40,7 +40,7 @@ That's exactly why this tool exists. If you make something you're proud of, I'd 
 
 1. Create your model using zmodel
 2. Export the file
-3. Open an [issue](https://github.com/yourname/zmodel/issues) or send a [pull request](https://github.com/yourname/zmodel/pulls) with your file attached
+3. Open an [issue](https://github.com/zimip/zmodel/issues) or send a [pull request](https://github.com/zimip/zmodel/pulls) with your file attached
 4. Add a short description of what it is and how you'd like it used
 
 All contributions will be credited. Even rough drafts or experiments are welcome — don't be shy.
