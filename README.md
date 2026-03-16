@@ -2,7 +2,7 @@
 
 A simple, open-source model web-editor for use with my upcoming mod.
 
-zmodel lets you create, edit, and preview models directly in your browser — no local setup required. It's designed to be lightweight, straightforward, and easy to contribute to.
+zmodel lets you create, edit, and preview models directly in your browser; no local setup required. It's designed to be lightweight, straightforward, and easy to contribute to.
 
 ---
 
@@ -38,7 +38,7 @@ That's exactly why this tool exists. If you make something you're proud of, I'd 
 3. Open an [issue](https://github.com/zimip/zmodel/issues) or send a [pull request](https://github.com/zimip/zmodel/pulls) with your file attached
 4. Add a short description of what it is and how you'd like it used
 
-All contributions will be credited. Even rough drafts or experiments are welcome — don't be shy.
+All contributions will be credited. Even rough drafts or experiments are welcome, so don't be shy.
 
 ---
 
