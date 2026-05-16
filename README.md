@@ -1,4 +1,7 @@
 # PROJECT HAS BEEN DISCONTINUED, THIS REPOSITORY WILL STAY UP FOR ARCHIVAL PURPOSES ONLY.
+## Interested in this project and want to work on it yourself? Message me on Discord: @zimipiri
+
+---
 
 # zmodel
 
