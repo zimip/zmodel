@@ -1,3 +1,5 @@
+# PROJECT HAS BEEN DISCONTINUED, THIS REPOSITORY WILL STAY UP FOR ARCHIVAL PURPOSES ONLY.
+
 # zmodel
 
 A simple, open-source model web-editor for use with my upcoming mod.
